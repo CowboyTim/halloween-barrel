@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560" width="1000" height="560" font-family="Helvetica, Arial, sans-serif">
+  <rect width="1000" height="560" fill="#ffffff"/>
+
+  <!-- title -->
+  <text x="20" y="32" font-size="18" font-weight="bold" fill="#111">Programmer: CH340E module to ESP-01 (breadboard module)</text>
+  <text x="20" y="52" font-size="12" fill="#555">USB-C powers the CH340E. Its 3V3 output powers the ESP-01, with a bulk capacitor for the Wi-Fi current peaks.</text>
+
+  <!-- USB-C -->
+  <rect x="100" y="66" width="120" height="34" rx="8" fill="#ffffff" stroke="#222" stroke-width="2"/>
+  <text x="160" y="88" font-size="12" text-anchor="middle" fill="#222">USB-C</text>
+  <line x1="160" y1="100" x2="160" y2="130" stroke="#222" stroke-width="2"/>
+
+  <!-- CH340E module -->
+  <rect x="60" y="130" width="200" height="250" fill="#ffffff" stroke="#222" stroke-width="2"/>
+  <text x="160" y="148" font-size="12" font-weight="bold" text-anchor="middle" fill="#222">CH340E module</text>
+  <text x="250" y="164" font-size="11" text-anchor="end" fill="#555">5V in</text>
+  <text x="250" y="204" font-size="11" text-anchor="end" fill="#d68910">3V3</text>
+  <text x="250" y="234" font-size="11" text-anchor="end" fill="#1f4e9c">GND</text>
+  <text x="250" y="284" font-size="11" text-anchor="end" fill="#222">TXD</text>
+  <text x="250" y="314" font-size="11" text-anchor="end" fill="#222">RXD</text>
+  <text x="250" y="344" font-size="11" text-anchor="end" fill="#222">DTR</text>
+
+  <!-- 3V3: CH340E to ESP-01 VCC -->
+  <line x1="260" y1="200" x2="620" y2="200" stroke="#d68910" stroke-width="2"/>
+  <!-- GND: CH340E to ESP-01 GND -->
+  <line x1="260" y1="230" x2="620" y2="230" stroke="#1f4e9c" stroke-width="2"/>
+  <!-- serial: TXD to RX, RXD to TX -->
+  <line x1="260" y1="280" x2="620" y2="280" stroke="#222" stroke-width="2"/>
+  <text x="440" y="272" font-size="10" text-anchor="middle" fill="#555">TXD to RX</text>
+  <line x1="260" y1="310" x2="620" y2="310" stroke="#222" stroke-width="2"/>
+  <text x="440" y="302" font-size="10" text-anchor="middle" fill="#555">RXD from TX</text>
+  <!-- DTR through 10 k to RST: esptool pulses it to reset the board -->
+  <line x1="260" y1="340" x2="410" y2="340" stroke="#222" stroke-width="2"/>
+  <rect x="410" y="334" width="40" height="12" fill="#ffffff" stroke="#222" stroke-width="2"/>
+  <text x="430" y="328" font-size="10" text-anchor="middle" fill="#222">10 kΩ</text>
+  <line x1="450" y1="340" x2="620" y2="340" stroke="#222" stroke-width="2"/>
+  <text x="540" y="332" font-size="10" text-anchor="middle" fill="#555">DTR resets it</text>
+
+  <!-- ESP-01 breadboard module -->
+  <rect x="620" y="150" width="160" height="320" fill="#ffffff" stroke="#222" stroke-width="2"/>
+  <text x="700" y="172" font-size="14" font-weight="bold" text-anchor="middle" fill="#222">ESP-01</text>
+  <text x="700" y="188" font-size="10" text-anchor="middle" fill="#555">breadboard module</text>
+  <text x="628" y="204" font-size="10" fill="#222">VCC</text>
+  <text x="628" y="234" font-size="10" fill="#222">GND</text>
+  <text x="628" y="284" font-size="10" fill="#222">RX</text>
+  <text x="628" y="314" font-size="10" fill="#222">TX</text>
+  <text x="628" y="344" font-size="10" fill="#222">RST</text>
+  <text x="628" y="374" font-size="10" fill="#222">CH_PD</text>
+  <text x="628" y="404" font-size="10" fill="#222">GPIO0</text>
+  <text x="628" y="434" font-size="10" fill="#222">GPIO2</text>
+
+  <!-- CH_PD tied high at 3V3 -->
+  <line x1="620" y1="370" x2="590" y2="370" stroke="#d68910" stroke-width="2"/>
+  <text x="584" y="374" font-size="10" text-anchor="end" fill="#d68910">3V3</text>
+
+  <!-- GPIO0 pushbutton to GND: hold it while the board resets to enter download mode -->
+  <line x1="620" y1="404" x2="572" y2="404" stroke="#222" stroke-width="2"/>
+  <rect x="540" y="396" width="32" height="16" fill="#ffffff" stroke="#222" stroke-width="2"/>
+  <text x="556" y="390" font-size="10" text-anchor="middle" fill="#222">GPIO0 button</text>
+  <line x1="540" y1="404" x2="500" y2="404" stroke="#222" stroke-width="2"/>
+  <text x="494" y="408" font-size="10" text-anchor="end" fill="#1f4e9c">GND</text>
+
+  <!-- GPIO2 to the MOSFET module's Trig input -->
+  <line x1="620" y1="434" x2="580" y2="434" stroke="#222" stroke-width="2"/>
+  <text x="574" y="438" font-size="10" text-anchor="end" fill="#222">to MOSFET Trig (led-test.svg)</text>
+
+  <!-- bulk capacitor C3 at 3V3 and GND -->
+  <line x1="860" y1="200" x2="860" y2="238" stroke="#d68910" stroke-width="2"/>
+  <line x1="846" y1="238" x2="874" y2="238" stroke="#222" stroke-width="3"/>
+  <line x1="846" y1="250" x2="874" y2="250" stroke="#222" stroke-width="2"/>
+  <line x1="860" y1="250" x2="860" y2="300" stroke="#1f4e9c" stroke-width="2"/>
+  <text x="878" y="236" font-size="12" font-weight="bold" fill="#222">+</text>
+  <text x="860" y="190" font-size="11" text-anchor="middle" fill="#d68910">3V3</text>
+  <text x="860" y="318" font-size="11" text-anchor="middle" fill="#1f4e9c">GND</text>
+  <text x="884" y="262" font-size="10" fill="#222">C3 220 µF, 10 V</text>
+  <text x="884" y="276" font-size="10" fill="#555">at the ESP-01 pins</text>
+
+  <!-- notes -->
+  <text x="20" y="500" font-size="11" fill="#444">Flash: hold the GPIO0 button, then esptool pulses DTR, which resets the board through the 10 kΩ resistor. Release GPIO0 once the flash starts.</text>
+  <text x="20" y="518" font-size="11" fill="#444">Run: release GPIO0 and reset (or power-cycle) the board. Opening the port does not reset it, since DTR and RTS are set low before the port opens.</text>
+  <text x="20" y="536" font-size="11" fill="#444">The CH340E's 3V3 output must supply the ESP-01's Wi-Fi peaks. If the board resets when it transmits, power it from a stronger 3.3 V source instead.</text>
+</svg>

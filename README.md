@@ -15,6 +15,9 @@ Schematic: [docs/schematic.svg](docs/schematic.svg).
 - `trigger_esp32/trigger_esp32.ino`: the button (GPIO8) and LED (GPIO7) on an ESP32-S3;
   sends the vibrate commands.
 - `docs/schematic.svg`: wiring schematic.
+- `docs/programmer.svg`: the CH340E programmer for the ESP-01 (DTR reset, GPIO0 button, bulk cap).
+- `docs/led-test.svg`: the MOSFET module switching an LED, for a bench check before the vibrator.
+- `docs/ESP-01-ESP8266-pinout-gpio-pin.png`: the ESP-01 pinout.
 - `deploy.py`: builds, flashes and monitors the boards listed in `boards.toml`.
 - `boards.toml`: one entry per board (port, MAC, chip, role).
 
