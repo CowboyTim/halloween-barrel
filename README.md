@@ -1,8 +1,8 @@
 # Halloween barrel: ESP-NOW vibrator
 
 An ESP-01 receives ESP-NOW commands and switches a vibrator that runs from a
-5V step-up / charger module (Otronic OT2069-B49, "5V step-up power and charging
-module for lithium battery") on a single 3.7V cell. A button (ESP32-S3) decides
+HT4928S charger / boost module (micro-USB in, 5.1 V out on a USB-A connector that
+was cut open) on a single 3.7V cell. A button (ESP32-S3) decides
 when the vibrator runs.
 
 Schematic: [docs/schematic.svg](docs/schematic.svg).
@@ -26,7 +26,9 @@ Schematic: [docs/schematic.svg](docs/schematic.svg).
 
 - ESP-01 (ESP8266), or an ESP32-C3 / ESP32-S3 board instead. A 3.3 V regulator
   that accepts the cell voltage can replace the LDO in that case.
-- Otronic OT2069-B49 charger / 5V boost module (input 3.7–5.5 V, output 5 V, max 1 A)
+- HT4928S charger / boost module (micro-USB in for charging at 0.8 A, 5.1 V out at up to
+  0.8 A, datasheet in `docs/HT4928S.PDF`). Its USB-A output is cut open, and the MOSFET
+  module sits between the 5.1 V and the vibrator.
 - 3.7 V Li-ion / LiPo cell with its own protection circuit (e.g. a 18650 from a
   pack or a LiPo pouch). Make sure the cell is intact and protected.
 - 3.3 V LDO that accepts a 3.7–4.2 V input and delivers ≥ 300 mA, e.g. AP2112K-3.3
@@ -43,21 +45,22 @@ Schematic: [docs/schematic.svg](docs/schematic.svg).
 
 ## Wiring
 
-The MOSFET module switches the boost's 5 V output to the vibrator, so the boost
-keeps running (8 µA standby). The ESP-01 runs from the battery through the LDO and
+The MOSFET module switches the HT4928S's 5.1 V output to the vibrator. The HT4928S
+goes into standby when its load stays under about 60 mA for 8 s, so the vibrator
+must draw more than that while it runs. The ESP-01 runs from the battery through the LDO and
 stays on to listen for ESP-NOW.
 
 ```
 Battery+ ──[fuse 1–2 A]──┬── LDO VIN   (1 µF)
-                         └── OT2069 B+
+                         └── HT4928S BTP
 
 LDO VOUT (3.3 V) ── ESP-01 VCC   (10 µF + 100 nF at the pins)
 ESP-01 GPIO2 ─────── MOSFET module Trig
 ESP-01 GPIO2 ── 100 Ω ── MOSFET module Trig    (HIGH on GPIO2 vibrates)
 ESP-01 GND, LDO GND, module GND ── Battery-
 
-OT2069 OUT+ (5 V) ── module Vin+
-OT2069 OUT- ──────── Battery-   (same ground)
+HT4928S 5.1 V (USB-A +) ── module Vin+
+HT4928S GND (USB-A −) ── Battery-   (same ground)
 module Vin- ──────── Battery-
 module Vout+ ─────── vibrator +
 module Vout- ─────── vibrator -
@@ -72,9 +75,9 @@ Notes:
   On the tested board the vibrator stayed off at power-up with only the 100 Ω. A
   pulldown on Trig (10 kΩ or 1 kΩ) made the boot behaviour worse, so none is fitted.
   The firmware drives GPIO2 HIGH to vibrate and LOW to stop.
-- The Otronic listing does not label B+/B- or the output connector. Check the
-  board silkscreen and confirm with a meter that B- and the 5 V output ground are
-  the same net, since the MOSFET module's Vin- and the ESP-01 GND go there.
+- Check with a meter that the HT4928S output ground (USB-A −) is the same net as the
+  battery −, since the MOSFET module's Vin- and the ESP-01 GND go there. The USB-A
+  data lines are not used.
 - The relay board (`relay/relay.ino`) uses GPIO0, a boot pin. The sketch drives GPIO0
   only after boot, so the relay is off during reset. Check `ACTIVE_LOW` against the
   relay board. Keep the relay's driver from pulling GPIO0 low at reset, or the board
