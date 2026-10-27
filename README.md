@@ -106,7 +106,7 @@ python3 deploy.py monitor vibrator
 
 ## Protocol
 
-Send a `VibeCommand` (magic `0x48414C4C`, `vibrate` 1 for on, 0 for off) over
+Send a `VibeCommand` (magic `0x48414C4C`, `vibrate` 1 for on, 0 for off, `seq` counting the changes of state) over
 ESP-NOW on WiFi channel 1. Sender and receiver must match on the channel and
 on the struct layout. The receiver ignores frames with the wrong size or magic.
 Both sketches accept the same message, so one sender can drive ESP-01 and ESP32 boards.
@@ -125,10 +125,36 @@ download mode (GPIO0 low while it resets), with the port given explicitly:
 
 ## Not verified yet
 
-- The sketches have not been run with the vibrator attached.
 - The MOSFET module's D4184 is not confirmed. The closest published part is a 40 V
   N-channel MOSFET, not a datasheet for this marking.
 - The Trig pulldown and the power-up behavior of the module (see Notes).
+
+## Logs and tests
+
+Both boards log over USB serial at 115200 baud, one line per event, each prefixed
+with the time in ms since boot:
+
+- Button (`trigger_esp32`): `press`, `release`, `mode burst|hold|idle`,
+  `send seq=N on=0|1`, `muted send ...`, `boot`
+- Vibrator (`vibrator`): `vibrate on seq=N`, `vibrate off seq=N reason=command|lease`,
+  `boot`
+
+The button also takes commands on its serial port: `press <ms>` (a press from the
+port), `mute 0|1` (1 sends nothing, as if the button were dead), `status`, and `mac?`.
+
+`tests/test_button.py` drives the button over its port and checks both logs. It
+covers a single press as one 1 s burst, presses right after a burst, a double tap
+held until release, the vibrator stopping when the button goes silent, the
+press-to-vibrate latency (median about 100 ms), and matching sequence numbers on
+both sides.
+
+```
+python3 tests/test_button.py -v
+```
+
+The suite needs both boards answering on USB. Don't run `deploy.py monitor` while
+it runs, since the monitor shares the ports. Each "off" is sent three times, since a
+broadcast isn't acknowledged. The vibrator's lease stops it if all three are lost.
 
 ## Ideas
 

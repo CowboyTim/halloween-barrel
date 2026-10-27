@@ -215,20 +215,29 @@ def stable_port(dev):
     return dev
 
 
+def open_quiet(port):
+    """Open a serial port with DTR and RTS low from the start. Opening a port normally raises DTR, which
+    resets a board whose DTR is wired to RST (or GPIO0), so it is set before the port opens."""
+    import serial
+    s = serial.Serial()
+    s.port = port
+    s.baudrate = 115200
+    s.timeout = 0.2
+    s.dtr = False
+    s.rts = False
+    s.open()
+    return s
+
+
 def query_mac(port):
     """The MAC the firmware on port reports ('mac?' -> 'mac <MAC>'), or None. The port is opened with DTR and
     RTS low, so the board is not reset. A board that is still booting gets a few tries."""
     import serial
     try:
-        s = serial.Serial(port, 115200, timeout=0.2)
+        s = open_quiet(port)
     except (serial.SerialException, OSError):
         return None
     try:
-        try:
-            s.rts = False        # RTS first: RTS high with DTR low resets some boards
-            s.dtr = False
-        except (OSError, serial.SerialException):
-            pass                 # no modem lines on this port (a pty, say)
         buf = b""
         for _ in range(10):
             s.write(b"mac?\n")
@@ -552,11 +561,7 @@ def monitor_one(board, port_override, prefix, stop):
             time.sleep(0.5)          # not plugged in (yet): wait for it to come back
             continue
         try:
-            s = serial.Serial(port, 115200, timeout=0.2)
-            # Opening raises DTR and RTS. Drop RTS first: on native USB, RTS set with DTR clear resets
-            # the board, and on an auto-reset adapter either one can. Monitoring must not restart it.
-            s.rts = False
-            s.dtr = False
+            s = open_quiet(port)     # DTR and RTS low before the open, so monitoring doesn't restart the board
         except (serial.SerialException, OSError):
             time.sleep(0.5)
             continue
