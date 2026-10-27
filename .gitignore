@@ -1,4 +1,7 @@
 build/
+.build/
+dist/
+__pycache__/
 *.bin
 *.elf
 .DS_Store

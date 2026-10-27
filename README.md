@@ -7,6 +7,8 @@ module for lithium battery") on a single 3.7V cell.
 ## Layout
 
 - `vibrator/vibrator.ino`: Arduino sketch for the ESP-01 (ESP8266 core).
+- `barrel.py`: builds, flashes and monitors the boards listed in `boards.toml`.
+- `boards.toml`: one entry per board (port, MAC, chip, role).
 
 ## Parts
 
@@ -80,12 +82,16 @@ the ESP-01 VCC pin. Then:
 - `RX` to adapter TX, `TX` to adapter RX
 - `RST` and `CH_PD` high
 
-Board: "Generic ESP8266 Module" (`esp8266:esp8266:generic`), flash mode
-DIO, 1 MB flash.
+Board: "Generic ESP8266 Module" (`esp8266:esp8266:generic`), 1 MB flash.
+
+Put the board's port in `boards.toml` (`python3 barrel.py list` shows the ports),
+then:
 
 ```
-arduino-cli compile --fqbn esp8266:esp8266:generic vibrator
-arduino-cli upload -p /dev/ttyUSB0 --fqbn esp8266:esp8266:generic vibrator
+python3 barrel.py update                 # once: installs the esp8266 core 3.1.2
+python3 barrel.py build vibrator
+python3 barrel.py flash vibrator         # GPIO0 low while it resets
+python3 barrel.py monitor vibrator
 ```
 
 ## Protocol
