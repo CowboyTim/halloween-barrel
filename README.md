@@ -35,6 +35,7 @@ Schematic: [docs/schematic.svg](docs/schematic.svg).
 - MOSFET module 5–36 V, 15 A (TinyTronics SKU 001958). It switches the motor with
   its MOSFET (marked D4184 on the board; check the marking). The Trig input accepts
   3.3 V.
+- 100 Ω series resistor from GPIO2 to the MOSFET module's Trig input.
 - 10 µF + 100 nF close to the ESP-01 supply pins, 1 µF in and out of the LDO.
 - Inline fuse on battery+ (1–2 A).
 - Flyback diode across the vibrator if the MOSFET module has none, and the vibrator
@@ -52,6 +53,7 @@ Battery+ ──[fuse 1–2 A]──┬── LDO VIN   (1 µF)
 
 LDO VOUT (3.3 V) ── ESP-01 VCC   (10 µF + 100 nF at the pins)
 ESP-01 GPIO2 ─────── MOSFET module Trig
+ESP-01 GPIO2 ── 100 Ω ── MOSFET module Trig    (HIGH on GPIO2 vibrates)
 ESP-01 GND, LDO GND, module GND ── Battery-
 
 OT2069 OUT+ (5 V) ── module Vin+
@@ -66,8 +68,10 @@ Notes:
 
 - The ESP-01 needs `CH_PD` and `RST` tied high (3.3 V). Most ESP-01 boards have
   pull-ups on these already.
-- GPIO2 is high while the ESP-01 boots, so the vibrator may pulse at power-up unless
-  the MOSFET module's Trig input has a pulldown. Check that with a meter.
+- GPIO2 is high while the ESP-01 boots, so it can briefly reach the module's Trig input.
+  On the tested board the vibrator stayed off at power-up with only the 100 Ω. A
+  pulldown on Trig (10 kΩ or 1 kΩ) made the boot behaviour worse, so none is fitted.
+  The firmware drives GPIO2 HIGH to vibrate and LOW to stop.
 - The Otronic listing does not label B+/B- or the output connector. Check the
   board silkscreen and confirm with a meter that B- and the 5 V output ground are
   the same net, since the MOSFET module's Vin- and the ESP-01 GND go there.
