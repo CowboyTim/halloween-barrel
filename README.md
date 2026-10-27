@@ -14,6 +14,7 @@ Schematic: [docs/schematic.svg](docs/schematic.svg).
   (gate on GPIO4).
 - `trigger_esp32/trigger_esp32.ino`: the button (GPIO8) and LED (GPIO7) on an ESP32-S3;
   sends the vibrate commands.
+- `relay/relay.ino`: an ESP-01 relay on GPIO0, following the same messages as the vibrator.
 - `docs/schematic.svg`: wiring schematic.
 - `docs/programmer.svg`: the CH340E programmer for the ESP-01 (DTR reset, GPIO0 button, bulk cap).
 - `docs/led-test.svg`: the MOSFET module switching an LED, for a bench check before the vibrator.
@@ -70,6 +71,10 @@ Notes:
 - The Otronic listing does not label B+/B- or the output connector. Check the
   board silkscreen and confirm with a meter that B- and the 5 V output ground are
   the same net, since the MOSFET module's Vin- and the ESP-01 GND go there.
+- The relay board (`relay/relay.ino`) uses GPIO0, a boot pin. The sketch drives GPIO0
+  only after boot, so the relay is off during reset. Check `ACTIVE_LOW` against the
+  relay board. Keep the relay's driver from pulling GPIO0 low at reset, or the board
+  boots into download mode. The programmer's GPIO0 button still works for flashing.
 - The board is silkscreened ST6845-C. No datasheet for that marking turned up.
   Listings for the similar T6845-C board describe a USB-A output, a Micro-B
   charge input, B+/B- battery pads, and a 2.9 V discharge cutoff. Confirm the pad

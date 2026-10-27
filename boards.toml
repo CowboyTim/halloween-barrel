@@ -22,6 +22,13 @@ mac  = "ec:fa:bc:b3:11:c1"
 chip = "esp8266"
 role = "VIBRATOR"
 
+# The relay: an ESP-01 with a relay on GPIO0 (relay/relay.ino). Fill in its port and mac once known.
+[boards.relay]
+port = ""
+mac  = "c8:c9:a3:1b:15:a4"
+chip = "esp8266"
+role = "RELAY"
+
 # The button: an ESP32-S3 with a button on GPIO8 and an LED on GPIO7 (trigger_esp32/).
 [boards.button]
 port = "/dev/ttyACM0"

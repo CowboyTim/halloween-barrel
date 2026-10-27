@@ -40,7 +40,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 BOARDS_FILE = os.path.join(HERE, "boards.toml")
 DIST = os.path.join(HERE, "dist")
 BUILD_CACHE = os.path.join(HERE, ".build")
-ROLES = ("VIBRATOR", "TRIGGER")
+ROLES = ("VIBRATOR", "TRIGGER", "RELAY")
 FLASH_BAUD = 115200     # 921600 failed mid-upload on the ESP-01's USB-serial programmer
 
 # The arduino cores, by the name arduino-cli uses for them. 'update' installs all of them.
@@ -78,7 +78,7 @@ CHIPS = {
         "esptool_chip": "esp8266",
         "flags": "",
         "board_options": "",
-        "sketches": {"VIBRATOR": "vibrator"},
+        "sketches": {"VIBRATOR": "vibrator", "RELAY": "relay"},
         # The core writes one image that starts at flash address 0, bootloader and partition table included.
         "layout": (("0x0", "{sketch}.ino.bin"),),
         "core_files": (),
