@@ -1,17 +1,18 @@
-# Barrel boards, used by barrel.py.
+# Barrel boards, used by deploy.py.
 #
 # One table per physical board: an ESP-01 (ESP8266) on a USB-serial adapter.
 # The adapter does not report the MAC, so each board's port is set here.
 #   port = the board's serial port. Use the /dev/serial/by-id/... path: it stays
 #          the same when the adapter is plugged into another USB port.
 #   mac  = MAC as esptool prints it (optional; checked after each flash)
-#   chip = esp8266 (selects the arduino-cli FQBN and esptool --chip)
-#   role = VIBRATOR (selects the sketch: vibrator/)
-# A role can have several boards (spares). Selecting the role ("deploy vibrator") means all of
-# them: the ones that are plugged in are flashed, the others skipped.
+#   chip = esp8266 (ESP-01) | esp32c3 | esp32s3 (selects the core, FQBN, esptool and sketch)
+#   role = VIBRATOR (selects the sketch for the chip: vibrator/ or vibrator_esp32/)
+# A role can have several boards (spares, or a mix of chips). Selecting the role ("deploy vibrator")
+# means all of them: the ones that are plugged in are flashed, the others skipped. Each chip is built
+# once per role.
 #
-# Fill in the port: plug the board in and run "python3 barrel.py list", or
-# "python3 barrel.py identify <port>" (put the ESP-01 in download mode first: GPIO0 low, reset).
+# Fill in the port: plug the board in and run "python3 deploy.py list", or
+# "python3 deploy.py identify <port>" (put an ESP-01 in download mode first: GPIO0 low, reset).
 
 [boards.vibrator]
 port = ""                  # e.g. "/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0"
@@ -19,9 +20,13 @@ mac  = ""
 chip = "esp8266"
 role = "VIBRATOR"
 
-# A spare vibrator (identical, same firmware). With two boards of a role, "python3 barrel.py deploy vibrator"
-# builds once and flashes whichever of them is plugged in (and says which it skipped); name one
-# ("deploy vibrator_spare") to require that board. Remove the # signs and fill in its port:
+[boards.vibrator_s3]
+port = ""                  # ESP32-S3 on native USB: "/dev/serial/by-id/usb-Espressif_..." or /dev/ttyACM*
+mac  = ""
+chip = "esp32s3"
+role = "VIBRATOR"
+
+# A spare ESP-01 (identical, same firmware). Remove the # signs and fill in its port:
 #[boards.vibrator_spare]
 #port = ""
 #chip = "esp8266"

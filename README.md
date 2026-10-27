@@ -7,12 +7,15 @@ module for lithium battery") on a single 3.7V cell.
 ## Layout
 
 - `vibrator/vibrator.ino`: Arduino sketch for the ESP-01 (ESP8266 core).
-- `barrel.py`: builds, flashes and monitors the boards listed in `boards.toml`.
+- `vibrator_esp32/vibrator_esp32.ino`: the same receiver for ESP32-C3 / ESP32-S3 boards
+  (gate on GPIO4).
+- `deploy.py`: builds, flashes and monitors the boards listed in `boards.toml`.
 - `boards.toml`: one entry per board (port, MAC, chip, role).
 
 ## Parts
 
-- ESP-01 (ESP8266)
+- ESP-01 (ESP8266), or an ESP32-C3 / ESP32-S3 board instead. A 3.3 V regulator
+  that accepts the cell voltage can replace the LDO in that case.
 - Otronic OT2069-B49 charger / 5V boost module (input 3.7–5.5 V, output 5 V, max 1 A)
 - 3.7 V Li-ion / LiPo cell with its own protection circuit (e.g. a 18650 from a
   pack or a LiPo pouch). Make sure the cell is intact and protected.
@@ -84,14 +87,14 @@ the ESP-01 VCC pin. Then:
 
 Board: "Generic ESP8266 Module" (`esp8266:esp8266:generic`), 1 MB flash.
 
-Put the board's port in `boards.toml` (`python3 barrel.py list` shows the ports),
+Put the board's port in `boards.toml` (`python3 deploy.py list` shows the ports),
 then:
 
 ```
-python3 barrel.py update                 # once: installs the esp8266 core 3.1.2
-python3 barrel.py build vibrator
-python3 barrel.py flash vibrator         # GPIO0 low while it resets
-python3 barrel.py monitor vibrator
+python3 deploy.py update                 # once: installs the esp8266 core 3.1.2
+python3 deploy.py build vibrator
+python3 deploy.py flash vibrator         # GPIO0 low while it resets
+python3 deploy.py monitor vibrator
 ```
 
 ## Protocol
@@ -99,6 +102,7 @@ python3 barrel.py monitor vibrator
 Send a `VibeCommand` (magic `0x48414C4C`, `durationMs` up to 10000) over
 ESP-NOW on WiFi channel 1. Sender and receiver must match on the channel and
 on the struct layout. The receiver ignores frames with the wrong size or magic.
+Both sketches accept the same message, so one sender can drive ESP-01 and ESP32 boards.
 
 ## Not verified yet
 

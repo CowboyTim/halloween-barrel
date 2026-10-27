@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
 """Build, flash and monitor the barrel boards.
 
-Boards are listed in boards.toml (port, MAC, chip, role). An ESP-01 has no
-native USB, so its USB-serial adapter does not report the MAC: the port of each
-board is set in boards.toml (or passed with --port). esptool is used to identify
-new boards and to flash; it refuses to write when the chip type does not match.
+Boards are listed in boards.toml (port, MAC, chip, role). The port of each board
+is set there (or passed with --port): USB-serial adapters and native-USB boards
+don't report a MAC that could be matched. esptool is used to identify new boards
+and to flash; it refuses to write when the chip type does not match.
 
-Each role has its own sketch directory: VIBRATOR -> vibrator/.
+Each chip has its own sketch for each role: an ESP-01 (esp8266) builds vibrator/,
+an ESP32-C3 or -S3 builds vibrator_esp32/. The boards of one role can mix chips.
 
-  python3 barrel.py list                        ports and the board on each
-  python3 barrel.py identify /dev/ttyUSB0       chip + MAC of a new board (boards.toml entry)
-  python3 barrel.py build   vibrator|all
-  python3 barrel.py flash   vibrator            flash the last build
-  python3 barrel.py deploy  all --monitor       build + flash, then serial output
-  python3 barrel.py monitor vibrator            serial output, prefixed with the board name
+  python3 deploy.py list                        ports and the board on each
+  python3 deploy.py identify /dev/ttyUSB0       chip + MAC of a new board (boards.toml entry)
+  python3 deploy.py build   vibrator|all
+  python3 deploy.py flash   vibrator            flash the last build
+  python3 deploy.py deploy  all --monitor       build + flash, then serial output
+  python3 deploy.py monitor vibrator            serial output, prefixed with the board name
 
 The ESP-01 must be in download mode to be identified or flashed: GPIO0 low while
 it resets, or --no-reset when you have already put it there yourself.
 
-Needs Python 3.11+ (tomllib), pyserial, arduino-cli with the esp8266:esp8266 core.
+Needs Python 3.11+ (tomllib), pyserial, arduino-cli with the cores in CORES (see 'update').
 """
 
 import argparse
@@ -37,23 +38,56 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 BOARDS_FILE = os.path.join(HERE, "boards.toml")
 DIST = os.path.join(HERE, "dist")
 BUILD_CACHE = os.path.join(HERE, ".build")
-PLATFORM = "esp8266:esp8266"
-CORE_VERSION = "3.1.2"
-CORE_INDEX = "http://arduino.esp8266.com/stable/package_esp8266com_index.json"
-SKETCHES = {"VIBRATOR": "vibrator"}
-ROLES = tuple(SKETCHES)
-
-# Per chip: arduino-cli FQBN and esptool --chip.
-CHIPS = {"esp8266": {"fqbn": "esp8266:esp8266:generic", "esptool": "esp8266"}}
-# The core writes one image that starts at flash address 0, bootloader and partition table included.
-FLASH_LAYOUT = (
-    ("0x0", "{sketch}.ino.bin"),
-)
+ROLES = ("VIBRATOR",)
 FLASH_BAUD = 921600
+
+# The arduino cores, by the name arduino-cli uses for them. 'update' installs all of them.
+CORES = {
+    "esp8266:esp8266": {"version": "3.1.2",
+                        "index": "http://arduino.esp8266.com/stable/package_esp8266com_index.json"},
+    "esp32:esp32": {"version": "3.3.12",
+                    "index": "https://espressif.github.io/arduino-esp32/package_esp32_index.json"},
+}
+
+# Per chip: the core, arduino-cli FQBN, esptool (a path under the arduino packages directory, and the
+# --chip name), the compiler flags and board options, the sketch folder per role, the flash layout
+# (address, file; {sketch} is the sketch name) and the core files to copy into the build.
+# The ESP32 entries share their settings: native USB serial (no adapter), and the no_ota partition
+# table: bootloader at 0x0, table at 0x8000, otadata at 0xe000 (boot_app0 selects app0), app at 0x10000.
+ESP32 = {
+    "core": "esp32:esp32",
+    "esptool": "esp32/tools/esptool_py/*/esptool",
+    "flags": "-DARDUINO_USB_MODE=1 -DARDUINO_USB_CDC_ON_BOOT=1",
+    "board_options": "PartitionScheme=no_ota",
+    "sketches": {"VIBRATOR": "vibrator_esp32"},
+    "layout": (
+        ("0x0", "{sketch}.ino.bootloader.bin"),
+        ("0x8000", "{sketch}.ino.partitions.bin"),
+        ("0xe000", "boot_app0.bin"),
+        ("0x10000", "{sketch}.ino.bin"),
+    ),
+    "core_files": ("esp32/hardware/esp32/*/tools/partitions/boot_app0.bin",),
+}
+CHIPS = {
+    "esp8266": {
+        "core": "esp8266:esp8266",
+        "fqbn": "esp8266:esp8266:generic",
+        "esptool": "esp8266/hardware/esp8266/*/tools/esptool/esptool.py",
+        "esptool_chip": "esp8266",
+        "flags": "",
+        "board_options": "",
+        "sketches": {"VIBRATOR": "vibrator"},
+        # The core writes one image that starts at flash address 0, bootloader and partition table included.
+        "layout": (("0x0", "{sketch}.ino.bin"),),
+        "core_files": (),
+    },
+    "esp32c3": {**ESP32, "fqbn": "esp32:esp32:esp32c3", "esptool_chip": "esp32c3"},
+    "esp32s3": {**ESP32, "fqbn": "esp32:esp32:esp32s3", "esptool_chip": "esp32s3"},
+}
 
 
 def die(msg):
-    sys.exit(f"barrel: {msg}")
+    sys.exit(f"deploy: {msg}")
 
 
 def norm_mac(mac):
@@ -77,6 +111,8 @@ def load_boards():
             die(f"boards.toml: [boards.{name}] role must be one of {', '.join(ROLES)}")
         if chip not in CHIPS:
             die(f"boards.toml: [boards.{name}] chip must be one of {', '.join(CHIPS)}")
+        if role not in CHIPS[chip]["sketches"]:
+            die(f"boards.toml: [boards.{name}] {chip} has no sketch for role {role}")
         mac = b.get("mac", "")
         if mac and not norm_mac(mac):
             die(f"boards.toml: [boards.{name}] mac '{mac}' is not a MAC address")
@@ -103,7 +139,7 @@ def resolve(boards, n):
 def select(boards, names):
     """Board names, roles (any case) or 'all' -> list of boards, in boards.toml order."""
     if not names:
-        die("name a board, a role or 'all' (see 'barrel.py list')")
+        die("name a board, a role or 'all' (see 'deploy.py list')")
     picked = []
     for n in names:
         hits, _ = resolve(boards, n)
@@ -146,7 +182,7 @@ def present(picked, required, port, wait_for_required=False):
         else:
             out.append(b)
     if not out:
-        die("none of the selected boards is connected (see 'barrel.py list')")
+        die("none of the selected boards is connected (see 'deploy.py list')")
     return out
 
 
@@ -175,9 +211,9 @@ def find_port(board, override=None):
         return override
     if not board["port"]:
         die(f"{board['name']}: no port in boards.toml yet; set port = \"...\" in [boards.{board['name']}] "
-            f"(see 'barrel.py list') or pass --port")
+            f"(see 'deploy.py list') or pass --port")
     if not os.path.exists(board["port"]):
-        die(f"{board['name']} ({board['port']}) is not connected (see 'barrel.py list')")
+        die(f"{board['name']} ({board['port']}) is not connected (see 'deploy.py list')")
     return board["port"]
 
 
@@ -205,16 +241,16 @@ def version_key(path):
 
 
 def core_file(pattern):
-    """Newest match of a glob under the installed esp8266 core's package directory."""
-    found = glob.glob(os.path.join(arduino_data_dir(), "packages/esp8266", pattern))
+    """Newest match of a glob under the arduino packages directory."""
+    found = glob.glob(os.path.join(arduino_data_dir(), "packages", pattern))
     return max(found, key=version_key) if found else None
 
 
-def esptool_cmd():
-    """The esptool of the installed esp8266 core, else one on PATH, else 'python3 -m esptool'."""
-    found = core_file("hardware/esp8266/*/tools/esptool/esptool.py")
+def esptool_cmd(chip):
+    """The esptool of the chip's core, else one on PATH, else 'python3 -m esptool'."""
+    found = core_file(CHIPS[chip]["esptool"])
     if found:
-        return [sys.executable, found]
+        return [sys.executable, found] if found.endswith(".py") else [found]
     for name in ("esptool", "esptool.py"):
         if shutil.which(name):
             return [name]
@@ -237,9 +273,9 @@ V4_NAMES = {"write-flash": "write_flash", "chip-id": "chip_id",
             "--flash-freq": "--flash_freq", "--flash-size": "--flash_size"}
 
 
-def run_esptool(args):
-    """Run esptool, echo its output, return (exit code, output)."""
-    cmd = esptool_cmd()
+def run_esptool(chip, args):
+    """Run the chip's esptool, echo its output, return (exit code, output)."""
+    cmd = esptool_cmd(chip)
     if not esptool_v5(cmd):
         args = [V4_NAMES.get(a, a) for a in args]
     print("+ " + " ".join(cmd + args), flush=True)
@@ -254,19 +290,22 @@ def run_esptool(args):
     return p.wait(), "".join(out)
 
 
+CHIP_RE = r"(ESP32-[CS]\d|ESP32|ESP8266)"
+
+
 def parse_esptool(out):
-    """Chip ('esp8266') and MAC from esptool output."""
-    chip = re.search(r"Detecting chip type\.\.\. *(ESP\d+)", out) or \
-        re.search(r"Chip is (ESP\d+)", out)
+    """Chip ('esp8266', 'esp32s3', ...) and MAC from esptool output."""
+    chip = re.search(r"Detecting chip type\.\.\. *" + CHIP_RE, out) or \
+        re.search(r"Chip (?:is|type:) *" + CHIP_RE, out)
     mac = re.search(r"MAC: *([0-9a-fA-F:]{17})", out)
-    return (chip.group(1).lower() if chip else None,
+    return (chip.group(1).replace("-", "").lower() if chip else None,
             norm_mac(mac.group(1)) if mac else None)
 
 
 # ---- commands ---------------------------------------------------------------
 
 def sketch_name(board):
-    return SKETCHES[board["role"]]
+    return CHIPS[board["chip"]]["sketches"][board["role"]]
 
 
 def out_dir(board):
@@ -284,7 +323,7 @@ def cmd_list(args, boards):
             seen.add(b["name"])
             print(f"{b['port']:30} {b['name']:12} {b['role']:9} {b['chip']:8}")
         else:
-            print(f"{dev:30} {'-':12} {'-':9} {'-':8} unknown: barrel.py identify {dev}  ({desc})")
+            print(f"{dev:30} {'-':12} {'-':9} {'-':8} unknown: deploy.py identify {dev}  ({desc})")
     for b in boards.values():
         if b["name"] not in seen:
             state = "not connected" if b["port"] else "no port in boards.toml"
@@ -292,8 +331,12 @@ def cmd_list(args, boards):
 
 
 def cmd_identify(args, boards):
-    rc, out = run_esptool(["--port", args.port, "chip-id"])
-    chip, mac = parse_esptool(out)
+    # The esp32 core's esptool (newer, knows the C3 and S3) first, then the esp8266 core's (knows the ESP-01).
+    for tool in ("esp32s3", "esp8266"):
+        rc, out = run_esptool(tool, ["--port", args.port, "chip-id"])
+        chip, mac = parse_esptool(out)
+        if not rc and mac:
+            break
     if rc or not mac:
         die(f"esptool could not read {args.port} (is the board in download mode?)")
     known = [b for b in boards.values() if b["mac"] == mac]
@@ -309,12 +352,12 @@ def cmd_identify(args, boards):
               f"port = \"{stable_port(args.port)}\"")
 
 
-def build_flags(args):
-    flags = []
+def build_flags(board, args):
+    flags = [CHIPS[board["chip"]]["flags"]]
     if os.environ.get("DEBUG") == "1":
         flags.append("-DDEBUG")
     flags += (os.environ.get("EXTRA_FLAGS", "") + " " + " ".join(args.flags or [])).split()
-    return " ".join(flags)
+    return " ".join(f for f in flags if f)
 
 
 def build(board, flags, args):
@@ -330,12 +373,19 @@ def build(board, flags, args):
            "--build-path", os.path.join(BUILD_CACHE, f"{board['chip']}-{sketch}"),
            "--build-property", f"compiler.cpp.extra_flags={flags}",
            "--build-property", f"compiler.c.extra_flags={flags}",
-           "--build-property", f"build.extra_flags={flags}",
-           os.path.join(HERE, sketch)]
+           "--build-property", f"build.extra_flags={flags}"]
+    if chip["board_options"]:
+        cmd += ["--board-options", chip["board_options"]]
+    cmd.append(os.path.join(HERE, sketch))
     if args.verbose:
         cmd[2:2] = ["-v"]
     if subprocess.run(cmd).returncode:
         die(f"build of {sketch} for {board['chip']} failed")
+    for pattern in chip["core_files"]:
+        f = core_file(pattern)
+        if not f:
+            die(f"{pattern} not found, run 'deploy.py update'")
+        shutil.copy(f, dst)
     with open(os.path.join(dst, "build.json"), "w") as f:
         json.dump({"sketch": sketch, "role": board["role"], "chip": board["chip"], "flags": flags,
                    "built": time.strftime("%Y-%m-%d %H:%M:%S")}, f, indent=1)
@@ -346,7 +396,7 @@ def build_boards(picked, args):
     for b in picked:
         key = (b["chip"], b["role"])
         if key not in done:
-            build(b, build_flags(args), args)
+            build(b, build_flags(b, args), args)
             done.add(key)
 
 
@@ -355,12 +405,13 @@ def cmd_build(args, boards):
 
 
 def flash(board, args):
+    chip = CHIPS[board["chip"]]
     src = out_dir(board)
     sketch = sketch_name(board)
-    bins = [(addr, os.path.join(src, name.format(sketch=sketch))) for addr, name in FLASH_LAYOUT]
+    bins = [(addr, os.path.join(src, name.format(sketch=sketch))) for addr, name in chip["layout"]]
     missing = [p for _, p in bins if not os.path.exists(p)]
     if missing:
-        die(f"{board['name']}: no build in {os.path.relpath(src, HERE)}, run 'barrel.py deploy {board['name']}'")
+        die(f"{board['name']}: no build in {os.path.relpath(src, HERE)}, run 'deploy.py deploy {board['name']}'")
     try:
         with open(os.path.join(src, "build.json")) as f:
             info = json.load(f)
@@ -376,17 +427,18 @@ def flash(board, args):
     # is attempted first. The new firmware is started with a hard reset at the end.
     before = "no-reset" if args.no_reset else "default-reset"
     rc, out = run_esptool(
-        ["--chip", CHIPS[board["chip"]]["esptool"], "--port", port, "--baud", str(FLASH_BAUD),
+        board["chip"],
+        ["--chip", chip["esptool_chip"], "--port", port, "--baud", str(FLASH_BAUD),
          "--before", before, "--after", "hard-reset",
          "write-flash", "-z", "--flash-mode", "keep", "--flash-freq", "keep", "--flash-size", "keep"]
         + [x for addr, path in bins for x in (addr, path)])
-    chip, mac = parse_esptool(out)
+    chip_found, mac = parse_esptool(out)
     if rc:
         die(f"flashing {board['name']} on {port} failed (esptool exit {rc}); "
             f"is a monitor still open on {port}, or is the board in download mode?")
     if board["mac"] and mac and mac != board["mac"]:
         die(f"{port} turned out to be {mac}, not {board['name']} ({board['mac']})")
-    print(f"== {board['name']} flashed OK ({chip or '?'}, {mac or '?'})")
+    print(f"== {board['name']} flashed OK ({chip_found or '?'}, {mac or '?'})")
 
 
 def cmd_flash(args, boards):
@@ -431,8 +483,8 @@ def monitor_one(board, port_override, prefix, stop):
             continue
         try:
             s = serial.Serial(port, 115200, timeout=0.2)
-            # Opening raises DTR and RTS, which can reset the board through an auto-reset circuit.
-            # Drop them right away so monitoring doesn't restart the firmware.
+            # Opening raises DTR and RTS. Drop RTS first: on native USB, RTS set with DTR clear resets
+            # the board, and on an auto-reset adapter either one can. Monitoring must not restart it.
             s.rts = False
             s.dtr = False
         except (serial.SerialException, OSError):
@@ -471,14 +523,18 @@ def cmd_monitor(args, boards):
 
 
 def cmd_update(args, boards):
-    urls = os.environ.get("BOARD_INDEX_URL", CORE_INDEX)
-    core = PLATFORM + "@" + os.environ.get("CORE_VERSION", CORE_VERSION)
+    """Install every core in CORES, so each chip in boards.toml can be built."""
     arduino_data_dir()
-    for c in (["--additional-urls", urls, "update"],
-              ["--additional-urls", urls, "core", "install", core],
-              ["--additional-urls", urls, "board", "list"]):
-        if subprocess.run(["arduino-cli"] + c).returncode:
-            die("arduino-cli " + " ".join(c) + " failed")
+    urls = []
+    for c in CORES.values():
+        if c["index"] not in urls:
+            urls.append(c["index"])
+    base = [x for u in urls for x in ("--additional-urls", u)]
+    steps = [base + ["update"]] + [base + ["core", "install", f"{name}@{c['version']}"]
+                                   for name, c in CORES.items()]
+    for step in steps:
+        if subprocess.run(["arduino-cli"] + step).returncode:
+            die("arduino-cli " + " ".join(step) + " failed")
 
 
 def main():
@@ -489,7 +545,8 @@ def main():
     sub.add_parser("list", help="serial ports, and the board on each")
     p = sub.add_parser("identify", help="chip and MAC of the board on a port (board in download mode)")
     p.add_argument("port")
-    sub.add_parser("update", help=f"install the esp8266 core ({CORE_VERSION}, or $CORE_VERSION)")
+    cores = ", ".join(f"{name} {c['version']}" for name, c in CORES.items())
+    sub.add_parser("update", help=f"install the arduino cores ({cores})")
     for name, hlp in (("build", "compile"), ("flash", "flash the last build"),
                       ("deploy", "build + flash"), ("monitor", "serial output")):
         p = sub.add_parser(name, help=hlp)
