@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1260 780" width="1260" height="780" font-family="Helvetica, Arial, sans-serif">
+  <rect width="1260" height="780" fill="#ffffff"/>
+
+  <!-- title -->
+  <text x="20" y="32" font-size="18" font-weight="bold" fill="#111">Halloween barrel: ESP-01 vibrator, power and MOSFET switch</text>
+  <text x="20" y="54" font-size="12" fill="#555">The MOSFET module switches the boost's 5 V supply to the motor. The ESP-01 stays on the battery through the LDO and listens all the time.</text>
+
+  <!-- rails -->
+  <line x1="60" y1="110" x2="1120" y2="110" stroke="#c0392b" stroke-width="3"/>
+  <text x="1040" y="100" font-size="12" fill="#c0392b">VBAT</text>
+  <line x1="60" y1="700" x2="1120" y2="700" stroke="#1f4e9c" stroke-width="3"/>
+  <text x="1040" y="720" font-size="12" fill="#1f4e9c">GND (battery -)</text>
+
+  <!-- battery and fuse -->
+  <line x1="60" y1="110" x2="60" y2="372" stroke="#222" stroke-width="2"/>
+  <line x1="48" y1="372" x2="72" y2="372" stroke="#222" stroke-width="3"/>
+  <line x1="54" y1="388" x2="66" y2="388" stroke="#222" stroke-width="3"/>
+  <line x1="60" y1="388" x2="60" y2="700" stroke="#222" stroke-width="2"/>
+  <text x="78" y="368" font-size="14" fill="#222">+</text>
+  <text x="76" y="398" font-size="14" fill="#222">-</text>
+  <text x="80" y="420" font-size="12" fill="#222">3.7 V cell</text>
+  <rect x="140" y="103" width="40" height="14" fill="#ffffff" stroke="#222" stroke-width="2"/>
+  <text x="160" y="92" font-size="11" text-anchor="middle" fill="#222">F1 1-2 A</text>
+
+  <!-- C1 at the LDO input -->
+  <line x1="250" y1="110" x2="250" y2="340" stroke="#222" stroke-width="2"/>
+  <line x1="238" y1="340" x2="262" y2="340" stroke="#222" stroke-width="2"/>
+  <line x1="238" y1="350" x2="262" y2="350" stroke="#222" stroke-width="2"/>
+  <line x1="250" y1="350" x2="250" y2="700" stroke="#222" stroke-width="2"/>
+  <text x="268" y="348" font-size="11" fill="#222">C1 1 µF</text>
+
+  <!-- U1 LDO AP2112K-3.3 -->
+  <rect x="330" y="250" width="100" height="80" fill="#ffffff" stroke="#222" stroke-width="2"/>
+  <text x="380" y="268" font-size="12" font-weight="bold" text-anchor="middle" fill="#222">U1</text>
+  <text x="380" y="284" font-size="10" text-anchor="middle" fill="#222">AP2112K-3.3</text>
+  <text x="336" y="262" font-size="9" fill="#555">VIN</text>
+  <text x="336" y="302" font-size="9" fill="#555">EN</text>
+  <text x="380" y="324" font-size="9" text-anchor="middle" fill="#555">GND</text>
+  <text x="424" y="262" font-size="9" text-anchor="end" fill="#555">VOUT</text>
+  <line x1="300" y1="110" x2="300" y2="305" stroke="#222" stroke-width="2"/>
+  <line x1="300" y1="265" x2="330" y2="265" stroke="#222" stroke-width="2"/>
+  <line x1="300" y1="305" x2="330" y2="305" stroke="#222" stroke-width="2"/>
+  <line x1="380" y1="330" x2="380" y2="700" stroke="#222" stroke-width="2"/>
+  <line x1="430" y1="265" x2="470" y2="265" stroke="#d68910" stroke-width="2"/>
+  <line x1="470" y1="265" x2="470" y2="230" stroke="#d68910" stroke-width="2"/>
+  <line x1="470" y1="230" x2="560" y2="230" stroke="#d68910" stroke-width="2"/>
+  <text x="476" y="190" font-size="12" fill="#d68910">3.3 V</text>
+
+  <!-- C2 decoupling at the ESP-01 -->
+  <line x1="510" y1="230" x2="510" y2="340" stroke="#222" stroke-width="2"/>
+  <line x1="498" y1="340" x2="522" y2="340" stroke="#222" stroke-width="2"/>
+  <line x1="498" y1="350" x2="522" y2="350" stroke="#222" stroke-width="2"/>
+  <line x1="510" y1="350" x2="510" y2="700" stroke="#222" stroke-width="2"/>
+  <text x="500" y="372" font-size="11" text-anchor="end" fill="#222">C2 10 µF</text>
+
+  <!-- ESP-01 -->
+  <rect x="560" y="200" width="120" height="260" fill="#ffffff" stroke="#222" stroke-width="2"/>
+  <text x="620" y="222" font-size="13" font-weight="bold" text-anchor="middle" fill="#222">ESP-01</text>
+  <text x="620" y="236" font-size="10" text-anchor="middle" fill="#555">ESP8266</text>
+  <text x="566" y="234" font-size="10" fill="#222">VCC</text>
+  <text x="566" y="264" font-size="10" fill="#222">CH_PD</text>
+  <text x="566" y="294" font-size="10" fill="#222">RST</text>
+  <text x="566" y="432" font-size="10" fill="#222">GND</text>
+  <text x="674" y="334" font-size="10" text-anchor="end" fill="#222">GPIO2</text>
+  <line x1="540" y1="230" x2="560" y2="230" stroke="#d68910" stroke-width="2"/>
+  <line x1="540" y1="230" x2="540" y2="290" stroke="#d68910" stroke-width="2"/>
+  <line x1="540" y1="260" x2="560" y2="260" stroke="#d68910" stroke-width="2"/>
+  <line x1="540" y1="290" x2="560" y2="290" stroke="#d68910" stroke-width="2"/>
+  <line x1="560" y1="440" x2="600" y2="440" stroke="#1f4e9c" stroke-width="2"/>
+  <line x1="600" y1="440" x2="600" y2="700" stroke="#1f4e9c" stroke-width="2"/>
+
+  <!-- MOSFET module 5-36 V 15 A (D4184) -->
+  <line x1="680" y1="330" x2="760" y2="330" stroke="#222" stroke-width="2"/>
+  <rect x="760" y="260" width="140" height="160" fill="#ffffff" stroke="#222" stroke-width="2"/>
+  <text x="768" y="282" font-size="11" font-weight="bold" fill="#222">MOSFET module</text>
+  <text x="768" y="296" font-size="10" fill="#555">5-36 V, 15 A</text>
+  <text x="768" y="310" font-size="10" fill="#555">D4184 (to check)</text>
+  <text x="766" y="334" font-size="9" fill="#222">Trig</text>
+  <text x="766" y="374" font-size="9" fill="#222">GND</text>
+  <text x="894" y="284" font-size="9" text-anchor="end" fill="#222">Vin+</text>
+  <text x="894" y="344" font-size="9" text-anchor="end" fill="#222">Vout+</text>
+  <text x="894" y="384" font-size="9" text-anchor="end" fill="#222">Vout-</text>
+  <text x="800" y="410" font-size="9" text-anchor="middle" fill="#222">Vin-</text>
+  <line x1="760" y1="370" x2="720" y2="370" stroke="#1f4e9c" stroke-width="2"/>
+  <line x1="720" y1="370" x2="720" y2="700" stroke="#1f4e9c" stroke-width="2"/>
+  <line x1="800" y1="420" x2="800" y2="700" stroke="#1f4e9c" stroke-width="2"/>
+  <line x1="900" y1="280" x2="920" y2="280" stroke="#d68910" stroke-width="2"/>
+  <line x1="920" y1="280" x2="920" y2="215" stroke="#d68910" stroke-width="2"/>
+  <line x1="920" y1="215" x2="960" y2="215" stroke="#d68910" stroke-width="2"/>
+  <line x1="900" y1="340" x2="1000" y2="340" stroke="#222" stroke-width="2"/>
+  <line x1="1000" y1="340" x2="1000" y2="374" stroke="#222" stroke-width="2"/>
+  <line x1="900" y1="380" x2="950" y2="380" stroke="#222" stroke-width="2"/>
+  <line x1="950" y1="380" x2="950" y2="426" stroke="#222" stroke-width="2"/>
+  <line x1="950" y1="426" x2="1000" y2="426" stroke="#222" stroke-width="2"/>
+
+  <!-- OT2069-B49 charger / boost -->
+  <rect x="960" y="150" width="120" height="110" fill="#ffffff" stroke="#222" stroke-width="2"/>
+  <text x="1020" y="170" font-size="11" font-weight="bold" text-anchor="middle" fill="#222">OT2069-B49</text>
+  <text x="1020" y="184" font-size="10" text-anchor="middle" fill="#555">charger + 5 V boost</text>
+  <text x="966" y="174" font-size="9" fill="#222">B+</text>
+  <text x="966" y="219" font-size="9" fill="#222">OUT+</text>
+  <text x="1074" y="234" font-size="9" text-anchor="end" fill="#222">OUT-</text>
+  <text x="1074" y="254" font-size="9" text-anchor="end" fill="#222">B-</text>
+  <line x1="960" y1="170" x2="945" y2="170" stroke="#c0392b" stroke-width="2"/>
+  <line x1="945" y1="170" x2="945" y2="110" stroke="#c0392b" stroke-width="2"/>
+  <line x1="1080" y1="250" x2="1110" y2="250" stroke="#1f4e9c" stroke-width="2"/>
+  <line x1="1080" y1="230" x2="1110" y2="230" stroke="#1f4e9c" stroke-width="2"/>
+  <line x1="1110" y1="230" x2="1110" y2="700" stroke="#1f4e9c" stroke-width="2"/>
+
+  <!-- vibrator and flyback diode (D1 optional) -->
+  <circle cx="1000" cy="400" r="26" fill="#ffffff" stroke="#222" stroke-width="2"/>
+  <text x="1000" y="406" font-size="16" font-weight="bold" text-anchor="middle" fill="#222">M</text>
+  <text x="1000" y="446" font-size="11" text-anchor="middle" fill="#222">vibrator (5 V)</text>
+  <line x1="1000" y1="374" x2="1040" y2="374" stroke="#222" stroke-width="2" stroke-dasharray="4 3"/>
+  <line x1="1040" y1="374" x2="1040" y2="380" stroke="#222" stroke-width="2" stroke-dasharray="4 3"/>
+  <line x1="1030" y1="380" x2="1050" y2="380" stroke="#222" stroke-width="2" stroke-dasharray="4 3"/>
+  <polygon points="1030,396 1050,396 1040,380" fill="none" stroke="#222" stroke-width="2" stroke-dasharray="4 3"/>
+  <line x1="1040" y1="396" x2="1040" y2="426" stroke="#222" stroke-width="2" stroke-dasharray="4 3"/>
+  <line x1="1040" y1="426" x2="1000" y2="426" stroke="#222" stroke-width="2" stroke-dasharray="4 3"/>
+  <text x="1000" y="486" font-size="10" text-anchor="middle" fill="#222">D1 1N5819 (optional)</text>
+
+  <!-- junctions -->
+  <g fill="#222">
+    <circle cx="250" cy="110" r="3.5"/>
+    <circle cx="300" cy="110" r="3.5"/>
+    <circle cx="300" cy="265" r="3.5"/>
+    <circle cx="300" cy="305" r="3.5"/>
+    <circle cx="250" cy="700" r="3.5"/>
+    <circle cx="380" cy="700" r="3.5"/>
+    <circle cx="510" cy="230" r="3.5"/>
+    <circle cx="510" cy="700" r="3.5"/>
+    <circle cx="540" cy="230" r="3.5"/>
+    <circle cx="600" cy="700" r="3.5"/>
+    <circle cx="720" cy="700" r="3.5"/>
+    <circle cx="800" cy="700" r="3.5"/>
+    <circle cx="945" cy="110" r="3.5"/>
+    <circle cx="1110" cy="230" r="3.5"/>
+    <circle cx="1110" cy="250" r="3.5"/>
+    <circle cx="1110" cy="700" r="3.5"/>
+    <circle cx="1000" cy="374" r="3.5"/>
+    <circle cx="1000" cy="426" r="3.5"/>
+  </g>
+
+  <!-- notes -->
+  <text x="20" y="745" font-size="11" fill="#444">F1 fuses the battery leads. The boost makes the 5 V and the MOSFET module switches the motor's minus side. Vin+ is the 5 V; Vin- and the module GND go to ground.</text>
+  <text x="20" y="764" font-size="11" fill="#444">Check on the board that Vout+ is tied to Vin+ and that Vout- is the switched side. D1 only if the module has no diode. CH_PD and RST tied high; GPIO0 not drawn (hold it low to flash).</text>
+</svg>
