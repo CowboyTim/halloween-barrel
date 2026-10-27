@@ -9,6 +9,8 @@ module for lithium battery") on a single 3.7V cell.
 - `vibrator/vibrator.ino`: Arduino sketch for the ESP-01 (ESP8266 core).
 - `vibrator_esp32/vibrator_esp32.ino`: the same receiver for ESP32-C3 / ESP32-S3 boards
   (gate on GPIO4).
+- `trigger_esp32/trigger_esp32.ino`: the button (GPIO8) and LED (GPIO7) on an ESP32-S3;
+  sends the vibrate commands.
 - `deploy.py`: builds, flashes and monitors the boards listed in `boards.toml`.
 - `boards.toml`: one entry per board (port, MAC, chip, role).
 
@@ -99,10 +101,22 @@ python3 deploy.py monitor vibrator
 
 ## Protocol
 
-Send a `VibeCommand` (magic `0x48414C4C`, `durationMs` up to 10000) over
+Send a `VibeCommand` (magic `0x48414C4C`, `vibrate` 1 for on, 0 for off) over
 ESP-NOW on WiFi channel 1. Sender and receiver must match on the channel and
 on the struct layout. The receiver ignores frames with the wrong size or magic.
 Both sketches accept the same message, so one sender can drive ESP-01 and ESP32 boards.
+
+The button (`trigger_esp32`) decides what happens. A press gives a 1 s burst. A
+double tap, with the button kept pressed, vibrates until it is released. While the
+vibrator should run, the button sends `on` every 100 ms, and `off` when the burst ends
+or the button is released. A vibrator stops when no `on` arrives for 500 ms, so a
+dead button, a lost connection or a power cut stop it too.
+
+Serial: send `mac?` on 115200 baud and the board answers `mac <MAC>`. `deploy.py`
+uses this to find a board by its MAC on whatever port it is on, without resetting
+it. A board that still runs firmware without this answer has to be flashed once in
+download mode (GPIO0 low while it resets), with the port given explicitly:
+`python3 deploy.py flash vibrator --port /dev/ttyUSB0 --no-reset`.
 
 ## Not verified yet
 
@@ -110,3 +124,10 @@ Both sketches accept the same message, so one sender can drive ESP-01 and ESP32 
 - Behavior of the MOSFET stage with the actual vibrator is untested.
 - The gate pulldown should hold the MOSFET off during ESP-01 boot. GPIO2 is
   high at boot, so measure the gate voltage at power-up before trusting it.
+
+## Ideas
+
+- **Automatic trigger:** a PIR motion sensor on the trigger board (the ESP32-S3)
+  could send the same messages as the button, with no change on the vibrator side.
+  Each motion would start an "on" stream that stops after a few seconds, and the
+  vibrators stop on their own when the messages stop.

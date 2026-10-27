@@ -1,27 +1,36 @@
 # Barrel boards, used by deploy.py.
 #
-# One table per physical board: an ESP-01 (ESP8266) on a USB-serial adapter.
-# The adapter does not report the MAC, so each board's port is set here.
-#   port = the board's serial port. Use the /dev/serial/by-id/... path: it stays
-#          the same when the adapter is plugged into another USB port.
-#   mac  = MAC as esptool prints it (optional; checked after each flash)
+# One table per physical board: an ESP-01 (ESP8266) or an ESP32-C3/S3.
+#   mac  = MAC as identify prints it. deploy.py finds the board's port by it, so a
+#          renumbered /dev/ttyUSB* does not matter. The firmware reports its MAC over
+#          serial (answers "mac?"), so the board must run a sketch that does that.
+#   port = where the board was last seen (optional). Tried first; when the board is not
+#          there, deploy asks the other USB serial ports for their MAC. Monitor only
+#          uses this port (and searches for the board every 10 s when it is missing).
 #   chip = esp8266 (ESP-01) | esp32c3 | esp32s3 (selects the core, FQBN, esptool and sketch)
 #   role = VIBRATOR (selects the sketch for the chip: vibrator/ or vibrator_esp32/)
 # A role can have several boards (spares, or a mix of chips). Selecting the role ("deploy vibrator")
 # means all of them: the ones that are plugged in are flashed, the others skipped. Each chip is built
 # once per role.
 #
-# Fill in the port: plug the board in and run "python3 deploy.py list", or
-# "python3 deploy.py identify <port>" (put an ESP-01 in download mode first: GPIO0 low, reset).
+# Fill in the mac: plug the board in and run "python3 deploy.py identify <port>". If its adapter
+# does not reset the ESP-01 by itself, put it in download mode first (GPIO0 low while it resets).
 
 [boards.vibrator]
-port = ""                  # e.g. "/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0"
-mac  = ""
+port = "/dev/ttyUSB0"
+mac  = "ec:fa:bc:b3:11:c1"
 chip = "esp8266"
 role = "VIBRATOR"
 
+# The button: an ESP32-S3 with a button on GPIO8 and an LED on GPIO7 (trigger_esp32/).
+[boards.button]
+port = "/dev/ttyACM0"
+mac  = "d0:cf:13:30:14:14"
+chip = "esp32s3"
+role = "TRIGGER"
+
 [boards.vibrator_s3]
-port = ""                  # ESP32-S3 on native USB: "/dev/serial/by-id/usb-Espressif_..." or /dev/ttyACM*
+port = ""                  # ESP32-S3 on native USB: found by its MAC once it runs vibrator_esp32
 mac  = ""
 chip = "esp32s3"
 role = "VIBRATOR"

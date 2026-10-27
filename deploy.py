@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Build, flash and monitor the barrel boards.
 
-Boards are listed in boards.toml (port, MAC, chip, role). The port of each board
-is set there (or passed with --port): USB-serial adapters and native-USB boards
-don't report a MAC that could be matched. esptool is used to identify new boards
-and to flash; it refuses to write when the chip type does not match.
+Boards are listed in boards.toml (MAC, chip, role, and optionally a port). A board
+is found by its MAC: each USB serial port is asked for its MAC over serial (the
+firmware answers 'mac?'), the configured port first, so a renumbered ttyUSB still
+works. That asks reset nothing. esptool is used to identify new boards and to
+flash; it refuses to write when the chip type does not match.
 
 Each chip has its own sketch for each role: an ESP-01 (esp8266) builds vibrator/,
-an ESP32-C3 or -S3 builds vibrator_esp32/. The boards of one role can mix chips.
+an ESP32-C3 or -S3 builds vibrator_esp32/ (VIBRATOR) or trigger_esp32/ (TRIGGER,
+the button). The boards of one role can mix chips.
 
   python3 deploy.py list                        ports and the board on each
   python3 deploy.py identify /dev/ttyUSB0       chip + MAC of a new board (boards.toml entry)
@@ -38,8 +40,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 BOARDS_FILE = os.path.join(HERE, "boards.toml")
 DIST = os.path.join(HERE, "dist")
 BUILD_CACHE = os.path.join(HERE, ".build")
-ROLES = ("VIBRATOR",)
-FLASH_BAUD = 921600
+ROLES = ("VIBRATOR", "TRIGGER")
+FLASH_BAUD = 115200     # 921600 failed mid-upload on the ESP-01's USB-serial programmer
 
 # The arduino cores, by the name arduino-cli uses for them. 'update' installs all of them.
 CORES = {
@@ -59,7 +61,7 @@ ESP32 = {
     "esptool": "esp32/tools/esptool_py/*/esptool",
     "flags": "-DARDUINO_USB_MODE=1 -DARDUINO_USB_CDC_ON_BOOT=1",
     "board_options": "PartitionScheme=no_ota",
-    "sketches": {"VIBRATOR": "vibrator_esp32"},
+    "sketches": {"VIBRATOR": "vibrator_esp32", "TRIGGER": "trigger_esp32"},
     "layout": (
         ("0x0", "{sketch}.ino.bootloader.bin"),
         ("0x8000", "{sketch}.ino.partitions.bin"),
@@ -121,6 +123,9 @@ def load_boards():
     ports = [b["port"] for b in boards.values() if b["port"]]
     if len(ports) != len(set(ports)):
         die("boards.toml: the same port is listed twice")
+    for b in boards.values():
+        # the ports of the other boards: a search for this board does not probe them
+        b["claimed"] = {os.path.realpath(o["port"]) for o in boards.values() if o["port"] and o is not b}
     return boards
 
 
@@ -161,26 +166,30 @@ def select_req(boards, names):
     return picked, required
 
 
-def present(picked, required, port, wait_for_required=False):
-    """The boards of a selection that can be used now. Optional boards that have no port or are not plugged
-    in are skipped with a note; a required one is an error (or, for monitor, waited for)."""
+def present(picked, required, port):
+    """The boards of a selection that can be used now, found by their MAC (see locate). Optional boards that
+    are not plugged in are skipped with a note; a required one is an error."""
     if port:
+        # --port names the board on that port: 'vibrator' may be two boards, the one configured there is it
+        if len(picked) > 1:
+            picked = [b for b in picked if b["port"] and os.path.realpath(b["port"]) == os.path.realpath(port)]
+        if len(picked) != 1:
+            die(f"--port {port}: no single selected board is configured on that port")
         return picked
     out = []
     for b in picked:
-        if not b["port"]:
-            why = "no port in boards.toml"
-        elif not os.path.exists(b["port"]):
-            why = "not connected"
+        if not b["port"] and not b["mac"]:
+            why = "no port or mac in boards.toml"
         else:
-            out.append(b)
-            continue
+            b["found"] = locate(b)
+            if b["found"]:
+                out.append(b)
+                continue
+            why = "not connected"
         if b["name"] not in required:
             print(f"(skipping {b['name']}: {why})")
-        elif why == "no port in boards.toml" or not wait_for_required:
-            find_port(b)     # dies with the reason
         else:
-            out.append(b)
+            find_port(b)     # dies with the reason
     if not out:
         die("none of the selected boards is connected (see 'deploy.py list')")
     return out
@@ -189,12 +198,12 @@ def present(picked, required, port, wait_for_required=False):
 # ---- ports ------------------------------------------------------------------
 
 def list_ports():
-    """[(device, description)] for all USB serial ports."""
+    """[(device, vid, description)] for all USB serial ports."""
     try:
         from serial.tools import list_ports as lp
     except ImportError:
         die("pyserial is missing: pip install pyserial (or apt install python3-serial)")
-    return [(p.device, p.description or "") for p in sorted(lp.comports(), key=lambda p: p.device)
+    return [(p.device, p.vid, p.description or "") for p in sorted(lp.comports(), key=lambda p: p.device)
             if p.vid is not None]
 
 
@@ -206,15 +215,63 @@ def stable_port(dev):
     return dev
 
 
+def query_mac(port):
+    """The MAC the firmware on port reports ('mac?' -> 'mac <MAC>'), or None. The port is opened with DTR and
+    RTS low, so the board is not reset. A board that is still booting gets a few tries."""
+    import serial
+    try:
+        s = serial.Serial(port, 115200, timeout=0.2)
+    except (serial.SerialException, OSError):
+        return None
+    try:
+        try:
+            s.rts = False        # RTS first: RTS high with DTR low resets some boards
+            s.dtr = False
+        except (OSError, serial.SerialException):
+            pass                 # no modem lines on this port (a pty, say)
+        buf = b""
+        for _ in range(10):
+            s.write(b"mac?\n")
+            end = time.time() + 0.3
+            while time.time() < end:
+                buf = (buf + s.read(256))[-1024:]
+                m = re.search(rb"mac ([0-9a-fA-F:]{17})", buf)
+                if m:
+                    return norm_mac(m.group(1).decode())
+        return None
+    finally:
+        s.close()
+
+
+def locate(board):
+    """The port a board is on, by its MAC: its configured port first, then the USB serial ports that no other
+    board claims. A board without a MAC can only use its configured port. None when no port answers."""
+    if not board["mac"]:
+        return board["port"] if board["port"] and os.path.exists(board["port"]) else None
+    cands = [board["port"]] if board["port"] else []
+    cands += [dev for dev, _, _ in list_ports() if os.path.realpath(dev) not in board["claimed"]]
+    tried = set()
+    for dev in cands:
+        real = os.path.realpath(dev)
+        if not os.path.exists(dev) or real in tried:
+            continue
+        tried.add(real)
+        if query_mac(dev) == board["mac"]:
+            return dev
+    return None
+
+
 def find_port(board, override=None):
+    """The port to use for a board: --port, else the one locate() found (once per run)."""
     if override:
         return override
-    if not board["port"]:
-        die(f"{board['name']}: no port in boards.toml yet; set port = \"...\" in [boards.{board['name']}] "
-            f"(see 'deploy.py list') or pass --port")
-    if not os.path.exists(board["port"]):
-        die(f"{board['name']} ({board['port']}) is not connected (see 'deploy.py list')")
-    return board["port"]
+    if "found" not in board:
+        if not board["port"] and not board["mac"]:
+            die(f"{board['name']}: no port or mac in boards.toml yet; see 'deploy.py identify <port>'")
+        board["found"] = locate(board)
+    if not board["found"]:
+        die(f"{board['name']} ({board['mac'] or board['port']}) is not connected (see 'deploy.py list')")
+    return board["found"]
 
 
 # ---- tools ------------------------------------------------------------------
@@ -273,14 +330,20 @@ V4_NAMES = {"write-flash": "write_flash", "chip-id": "chip_id",
             "--flash-freq": "--flash_freq", "--flash-size": "--flash_size"}
 
 
-def run_esptool(chip, args):
-    """Run the chip's esptool, echo its output, return (exit code, output)."""
+def esptool_argv(chip, args):
+    """The command for the chip's esptool with args, spelled for its version."""
     cmd = esptool_cmd(chip)
     if not esptool_v5(cmd):
         args = [V4_NAMES.get(a, a) for a in args]
-    print("+ " + " ".join(cmd + args), flush=True)
+    return cmd + args
+
+
+def run_esptool(chip, args):
+    """Run the chip's esptool, echo its output, return (exit code, output)."""
+    cmd = esptool_argv(chip, args)
+    print("+ " + " ".join(cmd), flush=True)
     try:
-        p = subprocess.Popen(cmd + args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     except OSError as e:
         die(f"cannot run esptool: {e}")
     out = []
@@ -317,7 +380,7 @@ def cmd_list(args, boards):
                if b["port"] and os.path.exists(b["port"])}
     seen = set()
     print(f"{'PORT':30} {'BOARD':12} {'ROLE':9} {'CHIP':8} NOTE")
-    for dev, desc in list_ports():
+    for dev, _, desc in list_ports():
         b = by_port.get(os.path.realpath(dev))
         if b:
             seen.add(b["name"])
@@ -475,11 +538,18 @@ def say(line):
 def monitor_one(board, port_override, prefix, stop):
     import serial
     tag = f"[{board['name']}] " if prefix else ""
+    if not port_override and not board["port"] and not board["mac"]:
+        say(f"{tag}no port or mac in boards.toml")
+        return
+    last_search = 0.0
     while not stop.is_set():
-        try:
-            port = find_port(board, port_override)
-        except SystemExit:
-            time.sleep(0.5)          # gone (unplugged, not yet set up): wait for it to come back
+        port = port_override or (board["port"] if board["port"] and os.path.exists(board["port"]) else None)
+        if not port and board["mac"] and time.time() - last_search > 10:
+            # Not on its configured port: search by MAC, at most every 10 s.
+            last_search = time.time()
+            port = locate(board)
+        if not port:
+            time.sleep(0.5)          # not plugged in (yet): wait for it to come back
             continue
         try:
             s = serial.Serial(port, 115200, timeout=0.2)
@@ -505,8 +575,7 @@ def monitor_one(board, port_override, prefix, stop):
 
 
 def cmd_monitor(args, boards):
-    picked, required = select_req(boards, args.boards)
-    picked = present(picked, required, args.port, wait_for_required=True)   # a required board may be plugged in later
+    picked, _ = select_req(boards, args.boards)     # monitor never probes: a board not plugged in is waited for
     if args.port and len(picked) > 1:
         die("--port works with one board only")
     stop = threading.Event()
